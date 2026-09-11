@@ -190,7 +190,7 @@ function bindUI() {
   $('zoomOutButton')?.addEventListener('click', () => state.map?.setZoom(Math.max(3, (state.map.getZoom() || state.zoom) - 1)));
   $('mapTypeButton')?.addEventListener('click', toggleMapType);
   window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && $('appShell')?.classList.contains('drawer-open')) toggleDrawer(false);
+    if (event.key === 'Escape' && $('workspace')?.classList.contains('drawer-open')) toggleDrawer(false);
   });
 }
 
@@ -473,7 +473,7 @@ function openInGoogleEarth() {
 }
 
 function toggleDrawer(force) {
-  const shell = $('appShell');
+  const shell = $('workspace');
   const open = typeof force === 'boolean' ? force : !shell.classList.contains('drawer-open');
   shell.classList.toggle('drawer-open', open);
   $('drawerToggle').setAttribute('aria-expanded', String(open));

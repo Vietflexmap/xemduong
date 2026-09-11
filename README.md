@@ -6,7 +6,7 @@ Trình xem 360° hai màn hình cho `Vietflexmap/xemduong`:
 - màn hình dưới: Google Earth 3D qua Maps JavaScript API `maps3d`, có fallback Google Maps vệ tinh;
 - kéo marker vòng tròn đồng tâm + dấu cộng để đổi điểm xem;
 - kéo bản đồ hoặc di chuyển trong Street View thì tọa độ, marker, Earth và ảnh 360° đồng bộ;
-- cửa sổ tra cứu phường/xã/đặc khu ở bên phải, lấy dữ liệu chuẩn từ `sapnhap` và không che khuất vùng xem trên desktop;
+- cửa sổ tra cứu phường/xã/đặc khu ở bên phải, lấy dữ liệu chuẩn từ Vietflex sapnhap và không che khuất vùng xem trên desktop;
 - backend tối giản `/api/config` và `/api/admin`, cache dữ liệu hành chính 15 phút.
 
 ## API Google
@@ -29,7 +29,7 @@ Mở `http://localhost:8787`. Nếu không đặt biến môi trường, ứng d
 
 ## Triển khai
 
-- GitHub Pages: dùng `index.html`, `styles.css`, `app.js`, `config.js` và workflow trong `.github/workflows/pages.yml`.
+- GitHub Pages: vào **Settings → Pages → Build and deployment → Source: GitHub Actions**, sau đó chạy workflow `Deploy Vietflex Street View` thủ công. Workflow được để manual vì GitHub token không có quyền tự tạo Pages site cho repository mới.
 - Vercel/Node: dùng `api/`, `server/`, `package.json` và đặt `GOOGLE_MAPS_BROWSER_KEY` trong Environment Variables.
 - Có thể đổi nguồn dữ liệu bằng `ADMIN_DATA_URL`; mặc định là `https://vietflexmap.github.io/sapnhap/data/admin.json`.
 

@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#071923">
+  <meta name="description" content="Vietflex Street View — trải nghiệm 360° đồng bộ với Google Map và Google Earth.">
+  <title>Vietflex Street View · Google Map & Earth</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Vietflex Street View">
+        <span class="brand-mark" aria-hidden="true">⌁</span>
+        <span class="brand-copy">
+          <strong>VIETFLEX STREET VIEW</strong>
+          <small>360° · GOOGLE MAP · EARTH</small>
+        </span>
+      </a>
+
+      <div class="topbar-center">
+        <span class="live-dot" aria-hidden="true"></span>
+        <span id="runtimeStatus">Đang khởi tạo bản đồ…</span>
+      </div>
+
+      <div class="topbar-actions">
+        <button class="top-action" id="locateButton" type="button" title="Dùng vị trí hiện tại" aria-label="Dùng vị trí hiện tại">⌖</button>
+        <button class="top-action" id="drawerToggle" type="button" title="Mở tra cứu hành chính" aria-expanded="false" aria-controls="adminDrawer">
+          <span class="top-action-icon">☷</span><span class="top-action-label">Tra cứu</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="workspace" id="workspace">
+      <main class="viewer-shell" aria-label="Trình xem đường phố đồng bộ">
+        <section class="viewport viewport-pano" id="panoPanel" aria-label="Màn hình ảnh 360 độ">
+          <div class="viewport-header">
+            <div class="viewport-title">
+              <span class="viewport-index">01</span>
+              <div>
+                <strong>Chế độ xem đường phố</strong>
+                <small>Google Street View · 360°</small>
+              </div>
+            </div>
+            <div class="viewport-tools">
+              <span class="coverage-pill" id="coveragePill"><i></i> Đang kiểm tra phủ ảnh</span>
+              <button class="viewport-tool" id="resetPanoButton" type="button" title="Đặt lại ảnh 360°">↺</button>
+              <button class="viewport-tool" id="fullscreenPanoButton" type="button" title="Toàn màn hình ảnh 360°">⛶</button>
+            </div>
+          </div>
+          <div class="viewport-canvas" id="panoViewport">
+            <div id="pano" class="google-canvas"></div>
+            <div class="canvas-loading" id="panoLoading">
+              <span class="loading-ring"></span>
+              <strong>Đang tải Google Street View</strong>
+              <small>Ảnh 360° sẽ tự đồng bộ theo điểm trên bản đồ</small>
+            </div>
+            <div class="pano-hud">
+              <span class="hud-label">VỊ TRÍ 360°</span>
+              <span id="panoAddress">Đang xác định điểm xem…</span>
+            </div>
+            <div class="pano-compass" id="panoCompass" aria-label="Hướng nhìn hiện tại">
+              <span class="compass-arrow">▲</span><span>N</span>
+            </div>
+          </div>
+        </section>
+
+        <div class="viewer-divider" aria-hidden="true">
+          <span></span><b>VIETFLEX SYNC</b><span></span>
+        </div>
+
+        <section class="viewport viewport-earth" id="earthPanel" aria-label="Màn hình Google Earth 3D">
+          <div class="viewport-header">
+            <div class="viewport-title">
+              <span class="viewport-index earth-index">02</span>
+              <div>
+                <strong>Google Earth 3D</strong>
+                <small>Vệ tinh · địa hình · đồng bộ tọa độ</small>
+              </div>
+            </div>
+            <div class="viewport-tools">
+              <span class="sync-pill"><i></i> Đồng bộ trực tiếp</span>
+              <button class="viewport-tool" id="earthModeButton" type="button" title="Đổi lớp vệ tinh / bản đồ">◉</button>
+              <button class="viewport-tool" id="openEarthButton" type="button" title="Mở vị trí trong Google Earth">↗</button>
+            </div>
+          </div>
+          <div class="viewport-canvas earth-canvas" id="earthViewport">
+            <div id="earthStage" class="earth-stage">
+              <div id="earthMap" class="google-canvas"></div>
+            </div>
+            <div class="earth-fallback" id="earthFallback" hidden>
+              <span class="fallback-icon">◎</span>
+              <strong>Đang dùng bản đồ vệ tinh tương thích</strong>
+              <small>3D Earth cần bật Maps JavaScript API · maps3d</small>
+            </div>
+            <div class="reticle-guide" id="reticleGuide" aria-hidden="true">
+              <span class="reticle-ring reticle-ring-large"></span>
+              <span class="reticle-ring reticle-ring-small"></span>
+              <span class="reticle-cross reticle-cross-x"></span>
+              <span class="reticle-cross reticle-cross-y"></span>
+              <span class="reticle-center"></span>
+            </div>
+            <div class="coordinate-hud" aria-live="polite">
+              <span><b>LAT</b><strong id="hudLat">10.241500</strong></span>
+              <span><b>LNG</b><strong id="hudLng">106.375000</strong></span>
+              <span><b>ZOOM</b><strong id="hudZoom">16</strong></span>
+            </div>
+            <div class="map-actions" aria-label="Điều khiển bản đồ">
+              <button class="map-action" id="zoomInButton" type="button" title="Phóng to">＋</button>
+              <button class="map-action" id="zoomOutButton" type="button" title="Thu nhỏ">−</button>
+              <span class="map-action-separator"></span>
+              <button class="map-action" id="mapTypeButton" type="button" title="Đổi bản đồ đường phố / vệ tinh">▧</button>
+            </div>
+            <div class="drag-hint" id="dragHint"><span>+</span> Kéo vòng tròn để đổi điểm 360°</div>
+          </div>
+        </section>
+      </main>
+
+      <aside class="admin-drawer" id="adminDrawer" aria-label="Tra cứu phường xã đặc khu" aria-hidden="true">
+        <div class="drawer-header">
+          <div>
+            <span class="drawer-eyebrow">VIETFLEX ADMIN SEARCH</span>
+            <h1>Tra cứu nhanh</h1>
+            <p>Phường · xã · đặc khu · tỉnh/thành</p>
+          </div>
+          <button class="drawer-close" id="drawerClose" type="button" aria-label="Đóng tra cứu">×</button>
+        </div>
+
+        <div class="drawer-search">
+          <label class="search-field" for="adminSearch">
+            <span aria-hidden="true">⌕</span>
+            <input id="adminSearch" type="search" autocomplete="off" placeholder="Tên đơn vị hoặc mã ĐVHC…">
+            <button id="adminSearchClear" type="button" aria-label="Xóa tìm kiếm">×</button>
+          </label>
+          <div class="filter-row">
+            <label><span>Tỉnh / thành</span><select id="provinceFilter"><option value="">Tất cả 34 tỉnh/thành</option></select></label>
+            <label><span>Loại</span><select id="typeFilter"><option value="">Tất cả</option><option value="phường">Phường</option><option value="xã">Xã</option><option value="đặc khu">Đặc khu</option></select></label>
+          </div>
+        </div>
+
+        <div class="admin-summary" id="adminSummary">
+          <span class="summary-mark"></span>
+          <span><strong>Đang nạp dữ liệu hành chính…</strong><small>Kiểm tra nguồn `sapnhap`</small></span>
+        </div>
+
+        <div class="selected-admin" id="selectedAdmin" hidden></div>
+        <div class="admin-list-head"><strong>Danh sách đơn vị</strong><span id="adminCount">0 kết quả</span></div>
+        <div class="admin-list" id="adminList" role="listbox" aria-label="Danh sách đơn vị hành chính">
+          <div class="list-empty"><span class="loading-ring"></span><span>Đang tải 3.321 đơn vị…</span></div>
+        </div>
+        <div class="drawer-footer">Nguồn dữ liệu: Vietflex · sapnhap 2025 <span>•</span> Long Ngo thiết kế</div>
+      </aside>
+    </div>
+  </div>
+
+  <noscript>Ứng dụng cần JavaScript để tải Google Map, Google Earth và dữ liệu tra cứu.</noscript>
+  <script src="./config.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

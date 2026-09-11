@@ -474,6 +474,7 @@ function openInGoogleEarth() {
 
 function toggleDrawer(force) {
   const shell = $('workspace');
+  if (!shell) return;
   const open = typeof force === 'boolean' ? force : !shell.classList.contains('drawer-open');
   shell.classList.toggle('drawer-open', open);
   $('drawerToggle').setAttribute('aria-expanded', String(open));

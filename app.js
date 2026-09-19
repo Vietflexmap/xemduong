@@ -112,7 +112,7 @@ function loadGoogleMaps(apiKey) {
     // Pin the stable API version instead of the mutable beta channel.
     // 3D is loaded separately with importLibrary('maps3d') and may fall back
     // without blocking the 2D map or Street View.
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=3.65&language=vi&region=VN&libraries=places,geometry&loading=async&callback=${callbackName}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places,geometry&language=vi&region=VN&callback=${callbackName}`;
     script.onerror = () => finish(reject, new Error('Không thể tải Google Maps JavaScript API.'));
     document.head.appendChild(script);
   });

@@ -326,6 +326,7 @@ function bindUI() {
   $('typeFilter')?.addEventListener('change', renderAdminList);
   $('locateButton')?.addEventListener('click', locateUser);
   $('resetPanoButton')?.addEventListener('click', resetPanorama);
+  $('openStreetButton')?.addEventListener('click', openGoogleStreetView);
   $('fullscreenPanoButton')?.addEventListener('click', () => toggleFullscreen($('panoPanel')));
   $('openEarthButton')?.addEventListener('click', openInGoogleEarth);
   $('earthModeButton')?.addEventListener('click', toggleEarthMode);

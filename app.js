@@ -9,6 +9,9 @@ const state = {
   streetViewService: null,
   marker: null,
   earth3d: null,
+  fallbackMap: null,
+  fallbackMarker: null,
+  googleAuthFailed: false,
   earthMode: 'satellite',
   position: { lat: 10.2415, lng: 106.3750 },
   heading: 0,
@@ -49,15 +52,15 @@ async function boot() {
   if (mapsResult.status === 'fulfilled') {
     try {
       await initGoogleExperience();
-      setRuntimeStatus('Street View và bản đồ đang đồng bộ', 'ready');
+      if (!state.googleAuthFailed) setRuntimeStatus('Street View và bản đồ đang đồng bộ', 'ready');
     } catch (error) {
       console.error('Vietflex map initialization failed.', error);
       setRuntimeStatus('Google Maps đã tải nhưng khởi tạo không thành công', 'error');
-      showMapError(error);
+      activateFallbackExperience(error);
     }
   } else {
     setRuntimeStatus('Chưa kết nối được Google Maps API', 'error');
-    showMapError(mapsResult.reason);
+    activateFallbackExperience(mapsResult.reason);
   }
 }
 
@@ -99,9 +102,10 @@ function loadGoogleMaps(apiKey) {
     script.referrerPolicy = 'no-referrer-when-downgrade';
 
     window.gm_authFailure = () => {
-      const error = new Error('Google Maps API từ chối khóa hoặc HTTP referrer. Hãy kiểm tra Maps JavaScript API, billing và giới hạn domain cho vietflexmap.github.io.');
-      setRuntimeStatus('Google Maps API bị từ chối quyền truy cập', 'error');
-      showMapError(error);
+      state.googleAuthFailed = true;
+      const error = new Error('Google Maps Platform từ chối xác thực. Hãy kiểm tra billing, Maps JavaScript API và HTTP referrer https://vietflexmap.github.io/xemduong/* trong Google Cloud Console.');
+      setRuntimeStatus('Google Maps API bị từ chối · đã chuyển sang Vietflex fallback', 'error');
+      activateFallbackExperience(error);
       finish(reject, error);
     };
 
@@ -204,8 +208,8 @@ function bindUI() {
   $('fullscreenPanoButton')?.addEventListener('click', () => toggleFullscreen($('panoPanel')));
   $('openEarthButton')?.addEventListener('click', openInGoogleEarth);
   $('earthModeButton')?.addEventListener('click', toggleEarthMode);
-  $('zoomInButton')?.addEventListener('click', () => state.map?.setZoom((state.map.getZoom() || state.zoom) + 1));
-  $('zoomOutButton')?.addEventListener('click', () => state.map?.setZoom(Math.max(3, (state.map.getZoom() || state.zoom) - 1)));
+  $('zoomInButton')?.addEventListener('click', () => changeZoom(1));
+  $('zoomOutButton')?.addEventListener('click', () => changeZoom(-1));
   $('mapTypeButton')?.addEventListener('click', toggleMapType);
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && $('workspace')?.classList.contains('drawer-open')) toggleDrawer(false);
@@ -213,6 +217,10 @@ function bindUI() {
 }
 
 async function initGoogleExperience() {
+  if (state.googleAuthFailed) {
+    activateFallbackExperience(new Error('Google Maps Platform chưa xác thực được.'));
+    return;
+  }
   const maps = window.google.maps;
   const center = state.position;
   state.map = new maps.Map($('earthMap'), {
@@ -364,7 +372,7 @@ async function initEarth3D(center) {
 }
 
 function requestStreetView(position) {
-  if (!state.streetViewService || !state.panorama) return;
+  if (state.googleAuthFailed || !state.streetViewService || !state.panorama) return;
   const location = toLiteral(position);
   if (!location) return;
   const requestId = ++state.streetRequestId;
@@ -400,6 +408,8 @@ function moveTo(position, source = 'system', findStreetView = true) {
   state.syncing = true;
   if (state.marker && source !== 'marker') state.marker.setPosition(location);
   if (state.map && source !== 'map') state.map.panTo(location);
+  if (state.fallbackMarker && source !== 'fallback-marker') state.fallbackMarker.setLatLng([location.lat, location.lng]);
+  if (state.fallbackMap && !String(source).startsWith('fallback-map')) state.fallbackMap.panTo([location.lat, location.lng]);
   if (state.earth3d && source !== 'earth') state.earth3d.center = { lat: location.lat, lng: location.lng, altitude: 0 };
   updatePositionUI(location);
   state.syncing = false;
@@ -413,6 +423,8 @@ function updateFromStreetView(position) {
   state.syncing = true;
   state.marker?.setPosition(location);
   state.map?.panTo(location);
+  state.fallbackMarker?.setLatLng([location.lat, location.lng]);
+  state.fallbackMap?.panTo([location.lat, location.lng]);
   if (state.earth3d) state.earth3d.center = { lat: location.lat, lng: location.lng, altitude: 0 };
   updatePositionUI(location);
   state.syncing = false;
@@ -425,7 +437,7 @@ function updatePositionUI(position) {
   if (!location) return;
   $('hudLat').textContent = location.lat.toFixed(6);
   $('hudLng').textContent = location.lng.toFixed(6);
-  $('hudZoom').textContent = String(state.map?.getZoom?.() || state.zoom || 16);
+  $('hudZoom').textContent = String(state.map?.getZoom?.() || state.fallbackMap?.getZoom?.() || state.zoom || 16);
 }
 
 function getEarthCenter() {
@@ -433,10 +445,14 @@ function getEarthCenter() {
     const center = state.earth3d.center;
     return toLiteral(center);
   }
-  return toLiteral(state.map?.getCenter?.());
+  return toLiteral(state.map?.getCenter?.()) || toLiteral(state.fallbackMap?.getCenter?.());
 }
 
 function toggleEarthMode() {
+  if (state.fallbackMap && !state.map) {
+    setRuntimeStatus('Vietflex fallback đang hoạt động · Google Earth cần API hợp lệ', 'error');
+    return;
+  }
   if (!state.earth3d) {
     state.map?.setMapTypeId(state.mapType === 'satellite' ? 'roadmap' : 'satellite');
     return;
@@ -459,14 +475,20 @@ function toggleEarthMode() {
 }
 
 function toggleMapType() {
-  if (!state.map) return;
+  if (!state.map) {
+    if (state.fallbackMap) setRuntimeStatus('Đang dùng OpenStreetMap fallback · Google satellite cần API hợp lệ', 'error');
+    return;
+  }
   const next = state.map.getMapTypeId() === 'satellite' ? 'roadmap' : 'satellite';
   state.map.setMapTypeId(next);
   if (state.earthMode === '3d') toggleEarthMode();
 }
 
 function resetPanorama() {
-  if (!state.panorama) return;
+  if (!state.panorama) {
+    if (state.googleAuthFailed) setRuntimeStatus('Google Street View cần API key/billing/referrer hợp lệ', 'error');
+    return;
+  }
   state.panorama.setPov({ heading: 0, pitch: 0, zoom: 1 });
   requestStreetView(state.position);
 }
@@ -593,6 +615,111 @@ function showMapError(error) {
   $('panoLoading').innerHTML = `<span class="fallback-icon">!</span><strong>Chưa thể tải Google Maps</strong><small>${escapeHtml(error?.message || 'Kiểm tra API key, billing và HTTP referrer.')}</small>`;
   $('coveragePill').classList.add('empty');
   $('coveragePill').innerHTML = '<i></i> Cần cấu hình API';
+}
+
+function activateFallbackExperience(error) {
+  state.googleAuthFailed = true;
+  state.streetViewService = null;
+  state.panorama = null;
+  state.map = null;
+  state.marker = null;
+  state.earth3d = null;
+  state.earthMode = 'fallback';
+
+  try { state.fallbackMap?.remove?.(); } catch {}
+  state.fallbackMap = null;
+  state.fallbackMarker = null;
+
+  const oldPano = $('pano');
+  if (oldPano) {
+    const pano = oldPano.cloneNode(false);
+    oldPano.replaceWith(pano);
+    pano.className = 'google-canvas';
+    pano.style.display = 'grid';
+    pano.style.placeItems = 'center';
+    pano.style.background = 'radial-gradient(circle at 50% 45%, #12343d 0, #071923 58%, #02090d 100%)';
+    pano.innerHTML = `
+      <div style="max-width:620px;margin:24px;padding:28px;border:1px solid rgba(65,230,208,.3);border-radius:20px;background:rgba(4,23,30,.92);box-shadow:0 20px 70px rgba(0,0,0,.35);text-align:center;color:#e9fbf8">
+        <div style="font-size:34px;margin-bottom:10px">360°</div>
+        <strong style="display:block;font-size:20px;margin-bottom:8px">Google Street View tạm thời chưa xác thực được</strong>
+        <span style="display:block;color:#9eb6bd;line-height:1.5;margin-bottom:18px">Trang vẫn dùng được bản đồ và tra cứu. Mở Street View trực tiếp tại tọa độ hiện tại trong Google Maps trong khi API key được cấu hình lại.</span>
+        <button id="openStreetFallback" type="button" style="border:0;border-radius:12px;padding:12px 18px;font-weight:700;cursor:pointer;background:#41e6d0;color:#05252b">Mở Google Street View ↗</button>
+        <small style="display:block;margin-top:14px;color:#78939a">${escapeHtml(error?.message || 'Google Maps Platform authentication failed.')}</small>
+      </div>`;
+    pano.querySelector('#openStreetFallback')?.addEventListener('click', openGoogleStreetView);
+  }
+
+  $('panoLoading')?.classList.add('hidden');
+  if ($('panoAddress')) $('panoAddress').textContent = 'Google API chưa xác thực · dùng nút Mở Street View';
+  if ($('panoCompass')) $('panoCompass').style.display = 'none';
+  setCoverage('empty', 'Google API cần cấu hình');
+
+  const oldMap = $('earthMap');
+  if (oldMap) {
+    const mapNode = oldMap.cloneNode(false);
+    oldMap.replaceWith(mapNode);
+    mapNode.className = 'google-canvas';
+    mapNode.style.display = 'block';
+
+    if (window.L) {
+      const center = state.position;
+      const zoom = Number(state.config.defaultZoom || state.zoom || 16);
+      const map = window.L.map(mapNode, { zoomControl: false, attributionControl: true }).setView([center.lat, center.lng], zoom);
+      window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(map);
+
+      const icon = window.L.divIcon({
+        className: '',
+        iconSize: [54, 54],
+        iconAnchor: [27, 27],
+        html: '<div style="width:50px;height:50px;border-radius:50%;border:2px solid #fff;background:rgba(8,37,45,.25);box-shadow:0 2px 10px rgba(0,0,0,.5);position:relative"><div style="position:absolute;left:24px;top:5px;width:2px;height:40px;background:#41e6d0"></div><div style="position:absolute;top:24px;left:5px;width:40px;height:2px;background:#41e6d0"></div><div style="position:absolute;left:20px;top:20px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid #ffd35a"></div></div>'
+      });
+      const marker = window.L.marker([center.lat, center.lng], { draggable: true, icon }).addTo(map);
+      marker.on('dragend', () => {
+        const p = marker.getLatLng();
+        moveTo({ lat: p.lat, lng: p.lng }, 'fallback-marker', false);
+      });
+      map.on('click', (event) => moveTo({ lat: event.latlng.lat, lng: event.latlng.lng }, 'fallback-map-click', false));
+      map.on('zoomend', () => {
+        state.zoom = map.getZoom();
+        if ($('hudZoom')) $('hudZoom').textContent = String(state.zoom);
+      });
+      state.fallbackMap = map;
+      state.fallbackMarker = marker;
+      state.zoom = map.getZoom();
+      window.setTimeout(() => map.invalidateSize(), 80);
+    } else {
+      mapNode.innerHTML = '<div style="display:grid;place-items:center;height:100%;color:#d9ece8;background:#071923">Không tải được thư viện bản đồ fallback.</div>';
+    }
+  }
+
+  const title = document.querySelector('.viewport-earth .viewport-title strong');
+  const subtitle = document.querySelector('.viewport-earth .viewport-title small');
+  if (title) title.textContent = 'Vietflex Map fallback';
+  if (subtitle) subtitle.textContent = 'OpenStreetMap · tọa độ · tra cứu';
+  if ($('earthFallback')) $('earthFallback').hidden = true;
+  if ($('earthModeButton')) $('earthModeButton').textContent = '◎';
+  if ($('mapTypeButton')) $('mapTypeButton').textContent = '▧';
+  setRuntimeStatus('Vietflex Map hoạt động · Google Street View cần cấu hình API', 'error');
+  updatePositionUI(state.position);
+}
+
+function changeZoom(delta) {
+  if (state.map) {
+    state.map.setZoom(Math.max(3, (state.map.getZoom() || state.zoom) + delta));
+    return;
+  }
+  if (state.fallbackMap) {
+    state.fallbackMap.setZoom(Math.max(3, state.fallbackMap.getZoom() + delta));
+  }
+}
+
+function openGoogleStreetView() {
+  const { lat, lng } = state.position;
+  const url = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
+  window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 function reticleIcon(dragging) {

@@ -30,38 +30,23 @@ document.addEventListener('DOMContentLoaded', boot);
 
 async function boot() {
   bindUI();
-  setRuntimeStatus('Đang nạp dữ liệu Vietflex…', 'loading');
+  setRuntimeStatus('Đang khởi tạo Street View nhúng + Vietflex Map…', 'loading');
 
   const runtime = await loadRuntimeConfig();
   state.config = { ...state.config, ...runtime };
   if (state.config.defaultCenter) state.position = toLiteral(state.config.defaultCenter) || state.position;
 
-  const [adminResult, mapsResult] = await Promise.allSettled([
-    loadAdminData(),
-    loadGoogleMaps(state.config.googleMapsApiKey)
-  ]);
-
-  if (adminResult.status === 'fulfilled') {
+  try {
+    await loadAdminData();
     renderAdminSummary('ready', `${number0.format(state.adminUnits.length)} đơn vị đã sẵn sàng`, 'Nguồn dữ liệu hành chính Vietflex · sapnhap');
     renderAdminList();
-  } else {
-    renderAdminSummary('error', 'Không tải được dữ liệu hành chính', 'Bạn vẫn có thể kéo bản đồ để xem 360°');
-    renderAdminError(adminResult.reason);
+  } catch (error) {
+    renderAdminSummary('error', 'Không tải được dữ liệu hành chính', 'Bản đồ và Street View vẫn hoạt động');
+    renderAdminError(error);
   }
 
-  if (mapsResult.status === 'fulfilled') {
-    try {
-      await initGoogleExperience();
-      if (!state.googleAuthFailed) setRuntimeStatus('Street View và bản đồ đang đồng bộ', 'ready');
-    } catch (error) {
-      console.error('Vietflex map initialization failed.', error);
-      setRuntimeStatus('Google Maps đã tải nhưng khởi tạo không thành công', 'error');
-      activateFallbackExperience(error);
-    }
-  } else {
-    setRuntimeStatus('Chưa kết nối được Google Maps API', 'error');
-    activateFallbackExperience(mapsResult.reason);
-  }
+  initNoKeyExperience();
+  setRuntimeStatus('Street View iframe và Vietflex Map đang đồng bộ', 'ready');
 }
 
 async function loadRuntimeConfig() {
@@ -72,12 +57,148 @@ async function loadRuntimeConfig() {
     if (!response.ok) throw new Error(`API config HTTP ${response.status}`);
     const payload = await response.json();
     return {
-      ...(payload.googleMapsApiKey ? { googleMapsApiKey: payload.googleMapsApiKey } : {}),
       ...(payload.adminDataUrl ? { adminDataUrl: payload.adminDataUrl } : {})
     };
   } catch {
     return {};
   }
+}
+
+function initNoKeyExperience() {
+  state.googleAuthFailed = false;
+  state.map = null;
+  state.panorama = null;
+  state.streetViewService = null;
+  state.marker = null;
+  state.earth3d = null;
+  state.earthMode = 'iframe';
+
+  initVietflexMap();
+  renderStreetViewIframe(state.position, true);
+
+  const title = document.querySelector('.viewport-earth .viewport-title strong');
+  const subtitle = document.querySelector('.viewport-earth .viewport-title small');
+  if (title) title.textContent = 'Vietflex Map';
+  if (subtitle) subtitle.textContent = 'OpenStreetMap · tọa độ · đồng bộ Street View';
+  if ($('earthFallback')) $('earthFallback').hidden = true;
+  if ($('earthModeButton')) {
+    $('earthModeButton').textContent = '◎';
+    $('earthModeButton').title = 'Đưa bản đồ về vị trí Street View';
+  }
+  if ($('mapTypeButton')) {
+    $('mapTypeButton').textContent = '⌖';
+    $('mapTypeButton').title = 'Đưa bản đồ về vị trí hiện tại';
+  }
+  if ($('panoCompass')) $('panoCompass').style.display = 'none';
+  setCoverage('ready', 'Street View nhúng');
+  updatePositionUI(state.position);
+}
+
+function initVietflexMap() {
+  const oldMap = $('earthMap');
+  if (!oldMap || !window.L) return;
+
+  try { state.fallbackMap?.remove?.(); } catch {}
+  const mapNode = oldMap.cloneNode(false);
+  oldMap.replaceWith(mapNode);
+  mapNode.className = 'google-canvas';
+  mapNode.style.display = 'block';
+
+  const center = state.position;
+  const zoom = Number(state.config.defaultZoom || state.zoom || 16);
+  const map = window.L.map(mapNode, {
+    zoomControl: false,
+    attributionControl: true,
+    preferCanvas: true
+  }).setView([center.lat, center.lng], zoom);
+
+  window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const icon = window.L.divIcon({
+    className: '',
+    iconSize: [58, 58],
+    iconAnchor: [29, 29],
+    html: '<div style="width:54px;height:54px;border-radius:50%;border:2px solid #fff;background:rgba(8,37,45,.20);box-shadow:0 2px 12px rgba(0,0,0,.55);position:relative"><div style="position:absolute;left:26px;top:5px;width:2px;height:44px;background:#41e6d0"></div><div style="position:absolute;top:26px;left:5px;width:44px;height:2px;background:#41e6d0"></div><div style="position:absolute;left:21px;top:21px;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid #ffd35a"></div></div>'
+  });
+
+  const marker = window.L.marker([center.lat, center.lng], {
+    draggable: true,
+    icon,
+    title: 'Kéo để đổi điểm Street View'
+  }).addTo(map);
+
+  marker.on('drag', () => {
+    const p = marker.getLatLng();
+    updatePositionUI({ lat: p.lat, lng: p.lng });
+  });
+
+  marker.on('dragend', () => {
+    const p = marker.getLatLng();
+    moveTo({ lat: p.lat, lng: p.lng }, 'fallback-marker', true);
+  });
+
+  map.on('click', (event) => {
+    moveTo({ lat: event.latlng.lat, lng: event.latlng.lng }, 'fallback-map-click', true);
+  });
+
+  map.on('moveend', () => {
+    const c = map.getCenter();
+    state.zoom = map.getZoom();
+    if ($('hudZoom')) $('hudZoom').textContent = String(state.zoom);
+    if ($('dragHint')) $('dragHint').classList.add('hidden');
+    if (!state.syncing && c) updatePositionUI({ lat: c.lat, lng: c.lng });
+  });
+
+  state.fallbackMap = map;
+  state.fallbackMarker = marker;
+  state.zoom = map.getZoom();
+  window.setTimeout(() => map.invalidateSize(), 120);
+}
+
+function buildStreetViewEmbedUrl(position) {
+  const p = toLiteral(position) || state.position;
+  const bearing = Number.isFinite(state.heading) ? state.heading : 90;
+  // Legacy Google Street View iframe endpoint. It does not use the Maps JS API.
+  return `https://maps.google.com/maps?layer=c&cbll=${p.lat.toFixed(7)},${p.lng.toFixed(7)}&cbp=12,${bearing},0,0,5&source=embed&output=svembed`;
+}
+
+function renderStreetViewIframe(position, initial = false) {
+  const p = toLiteral(position);
+  if (!p) return;
+
+  state.position = p;
+  const host = $('pano');
+  if (!host) return;
+  host.innerHTML = '';
+
+  const frame = document.createElement('iframe');
+  frame.id = 'streetViewFrame';
+  frame.title = 'Google Street View';
+  frame.src = buildStreetViewEmbedUrl(p);
+  frame.allowFullscreen = true;
+  frame.loading = initial ? 'eager' : 'lazy';
+  frame.referrerPolicy = 'strict-origin-when-cross-origin';
+  frame.style.cssText = 'width:100%;height:100%;border:0;display:block;background:#000;';
+  frame.setAttribute('allow', 'fullscreen; geolocation');
+
+  const loading = $('panoLoading');
+  if (loading) {
+    loading.classList.remove('hidden');
+    loading.innerHTML = '<span class="loading-ring"></span><strong>Đang tải Street View nhúng</strong><small>Đồng bộ theo điểm trên Vietflex Map</small>';
+  }
+
+  frame.addEventListener('load', () => {
+    loading?.classList.add('hidden');
+    setCoverage('ready', 'Street View nhúng');
+    if ($('panoAddress')) $('panoAddress').textContent = `${p.lat.toFixed(6)}, ${p.lng.toFixed(6)} · iframe`;
+  }, { once: true });
+
+  host.appendChild(frame);
+  window.setTimeout(() => loading?.classList.add('hidden'), 4500);
+  updatePositionUI(p);
 }
 
 function loadGoogleMaps(apiKey) {
@@ -406,14 +527,15 @@ function moveTo(position, source = 'system', findStreetView = true) {
   if (!location) return;
   state.position = location;
   state.syncing = true;
-  if (state.marker && source !== 'marker') state.marker.setPosition(location);
-  if (state.map && source !== 'map') state.map.panTo(location);
-  if (state.fallbackMarker && source !== 'fallback-marker') state.fallbackMarker.setLatLng([location.lat, location.lng]);
-  if (state.fallbackMap && !String(source).startsWith('fallback-map')) state.fallbackMap.panTo([location.lat, location.lng]);
-  if (state.earth3d && source !== 'earth') state.earth3d.center = { lat: location.lat, lng: location.lng, altitude: 0 };
+  if (state.fallbackMarker && source !== 'fallback-marker') {
+    state.fallbackMarker.setLatLng([location.lat, location.lng]);
+  }
+  if (state.fallbackMap && source !== 'fallback-map-click') {
+    state.fallbackMap.panTo([location.lat, location.lng]);
+  }
   updatePositionUI(location);
   state.syncing = false;
-  if (findStreetView) requestStreetView(location);
+  if (findStreetView) renderStreetViewIframe(location);
 }
 
 function updateFromStreetView(position) {
@@ -437,7 +559,7 @@ function updatePositionUI(position) {
   if (!location) return;
   $('hudLat').textContent = location.lat.toFixed(6);
   $('hudLng').textContent = location.lng.toFixed(6);
-  $('hudZoom').textContent = String(state.map?.getZoom?.() || state.fallbackMap?.getZoom?.() || state.zoom || 16);
+  $('hudZoom').textContent = String(state.fallbackMap?.getZoom?.() || state.zoom || 16);
 }
 
 function getEarthCenter() {
@@ -449,48 +571,19 @@ function getEarthCenter() {
 }
 
 function toggleEarthMode() {
-  if (state.fallbackMap && !state.map) {
-    setRuntimeStatus('Vietflex fallback đang hoạt động · Google Earth cần API hợp lệ', 'error');
-    return;
-  }
-  if (!state.earth3d) {
-    state.map?.setMapTypeId(state.mapType === 'satellite' ? 'roadmap' : 'satellite');
-    return;
-  }
-  const earthMap = $('earthMap');
-  if (state.earthMode === '3d') {
-    state.earthMode = 'satellite';
-    state.earth3d.style.display = 'none';
-    earthMap.style.display = 'block';
-    state.map.setMapTypeId('satellite');
-    $('earthModeButton').textContent = '◎';
-    $('earthFallback').hidden = true;
-  } else {
-    state.earthMode = '3d';
-    earthMap.style.display = 'none';
-    state.earth3d.style.display = 'block';
-    state.earth3d.center = { ...state.position, altitude: 0 };
-    $('earthModeButton').textContent = '◒';
-  }
+  if (!state.fallbackMap) return;
+  state.fallbackMap.setView([state.position.lat, state.position.lng], state.zoom || 16);
+  window.setTimeout(() => state.fallbackMap.invalidateSize(), 50);
 }
 
 function toggleMapType() {
-  if (!state.map) {
-    if (state.fallbackMap) setRuntimeStatus('Đang dùng OpenStreetMap fallback · Google satellite cần API hợp lệ', 'error');
-    return;
-  }
-  const next = state.map.getMapTypeId() === 'satellite' ? 'roadmap' : 'satellite';
-  state.map.setMapTypeId(next);
-  if (state.earthMode === '3d') toggleEarthMode();
+  if (!state.fallbackMap) return;
+  state.fallbackMap.setView([state.position.lat, state.position.lng], state.fallbackMap.getZoom());
 }
 
 function resetPanorama() {
-  if (!state.panorama) {
-    if (state.googleAuthFailed) setRuntimeStatus('Google Street View cần API key/billing/referrer hợp lệ', 'error');
-    return;
-  }
-  state.panorama.setPov({ heading: 0, pitch: 0, zoom: 1 });
-  requestStreetView(state.position);
+  state.heading = 90;
+  renderStreetViewIframe(state.position);
 }
 
 function locateUser() {
@@ -502,7 +595,7 @@ function locateUser() {
   navigator.geolocation.getCurrentPosition(
     ({ coords }) => {
       moveTo({ lat: coords.latitude, lng: coords.longitude }, 'device', true);
-      setRuntimeStatus('Đã đưa bản đồ đến vị trí của bạn', 'ready');
+      setRuntimeStatus('Đã đồng bộ vị trí với Street View iframe', 'ready');
     },
     () => setRuntimeStatus('Không được cấp quyền vị trí', 'error'),
     { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
@@ -574,12 +667,8 @@ function selectAdminUnit(unit) {
   const location = unit.lat != null && unit.lng != null ? { lat: unit.lat, lng: unit.lng } : null;
   if (location) {
     moveTo(location, 'admin', true);
-  } else if (window.google?.maps) {
-    const address = `${unit.full_name}, ${unit.province_full_name || unit.province_name}, Việt Nam`;
-    new window.google.maps.Geocoder().geocode({ address }, (results, status) => {
-      const result = results?.[0]?.geometry?.location;
-      if (status === 'OK' && result) moveTo(result, 'admin-geocode', true);
-    });
+  } else {
+    setRuntimeStatus('Đơn vị này chưa có tọa độ tâm trong dữ liệu hành chính', 'error');
   }
 }
 
@@ -707,10 +796,6 @@ function activateFallbackExperience(error) {
 }
 
 function changeZoom(delta) {
-  if (state.map) {
-    state.map.setZoom(Math.max(3, (state.map.getZoom() || state.zoom) + delta));
-    return;
-  }
   if (state.fallbackMap) {
     state.fallbackMap.setZoom(Math.max(3, state.fallbackMap.getZoom() + delta));
   }

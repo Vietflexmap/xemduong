@@ -6,7 +6,6 @@
   <meta name="theme-color" content="#071923">
   <meta name="description" content="Vietflex Street View — trải nghiệm 360° đồng bộ với Google Map và Google Earth.">
   <title>Vietflex Street View · Google Map & Earth</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -16,7 +15,7 @@
         <span class="brand-mark" aria-hidden="true">⌁</span>
         <span class="brand-copy">
           <strong>VIETFLEX STREET VIEW</strong>
-          <small>360° · STREET VIEW · VIETFLEX MAP</small>
+          <small>360° · GOOGLE MAP · EARTH</small>
         </span>
       </a>
 
@@ -77,13 +76,13 @@
             <div class="viewport-title">
               <span class="viewport-index earth-index">02</span>
               <div>
-                <strong>Vietflex Map</strong>
-                <small>OpenStreetMap · tọa độ · đồng bộ Street View</small>
+                <strong>Google Map</strong>
+                <small>Roadmap · Satellite / Earth · đồng bộ Street View</small>
               </div>
             </div>
             <div class="viewport-tools">
-              <span class="sync-pill"><i></i> Không dùng Maps JS API</span>
-              <button class="viewport-tool" id="earthModeButton" type="button" title="Đưa bản đồ về vị trí Street View">◉</button>
+              <span class="sync-pill"><i></i> Đồng bộ cùng tọa độ</span>
+              <button class="viewport-tool" id="earthModeButton" type="button" title="Google Map / Satellite">◉</button>
               <button class="viewport-tool" id="openEarthButton" type="button" title="Mở vị trí trong Google Earth">↗</button>
             </div>
           </div>
@@ -112,9 +111,9 @@
               <button class="map-action" id="zoomInButton" type="button" title="Phóng to">＋</button>
               <button class="map-action" id="zoomOutButton" type="button" title="Thu nhỏ">−</button>
               <span class="map-action-separator"></span>
-              <button class="map-action" id="mapTypeButton" type="button" title="Đưa bản đồ về vị trí hiện tại">▧</button>
+              <button class="map-action" id="mapTypeButton" type="button" title="Đổi Roadmap / Satellite">▧</button>
             </div>
-            <div class="drag-hint" id="dragHint"><span>+</span> Kéo vòng tròn để đổi điểm 360°</div>
+            <div class="drag-hint" id="dragHint"><span>+</span> Kéo/chạm bản đồ để đồng bộ Street View</div>
           </div>
         </section>
       </main>
@@ -157,8 +156,7 @@
   </div>
 
   <noscript>Ứng dụng cần JavaScript để tải Google Map, Google Earth và dữ liệu tra cứu.</noscript>
-  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./config.js?v=20260919-8"></script>
-  <script type="module" src="./app.js?v=20260919-8"></script>
+  <script src="./config.js?v=20260919-9"></script>
+  <script type="module" src="./app.js?v=20260919-9"></script>
 </body>
 </html>

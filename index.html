@@ -16,13 +16,13 @@
         <span class="brand-mark" aria-hidden="true">⌁</span>
         <span class="brand-copy">
           <strong>VIETFLEX STREET VIEW</strong>
-          <small>360° · GOOGLE MAP · EARTH</small>
+          <small>360° · STREET VIEW · VIETFLEX MAP</small>
         </span>
       </a>
 
       <div class="topbar-center">
         <span class="live-dot" aria-hidden="true"></span>
-        <span id="runtimeStatus">Đang khởi tạo bản đồ…</span>
+        <span id="runtimeStatus">Đang khởi tạo Street View nhúng…</span>
       </div>
 
       <div class="topbar-actions">
@@ -45,7 +45,7 @@
               </div>
             </div>
             <div class="viewport-tools">
-              <span class="coverage-pill" id="coveragePill"><i></i> Đang kiểm tra phủ ảnh</span>
+              <span class="coverage-pill" id="coveragePill"><i></i> Street View iframe</span>
               <button class="viewport-tool" id="resetPanoButton" type="button" title="Đặt lại ảnh 360°">↺</button>
               <button class="viewport-tool" id="fullscreenPanoButton" type="button" title="Toàn màn hình ảnh 360°">⛶</button>
             </div>
@@ -76,13 +76,13 @@
             <div class="viewport-title">
               <span class="viewport-index earth-index">02</span>
               <div>
-                <strong>Google Earth 3D</strong>
-                <small>Vệ tinh · địa hình · đồng bộ tọa độ</small>
+                <strong>Vietflex Map</strong>
+                <small>OpenStreetMap · tọa độ · đồng bộ Street View</small>
               </div>
             </div>
             <div class="viewport-tools">
-              <span class="sync-pill"><i></i> Đồng bộ trực tiếp</span>
-              <button class="viewport-tool" id="earthModeButton" type="button" title="Đổi lớp vệ tinh / bản đồ">◉</button>
+              <span class="sync-pill"><i></i> Không dùng Maps JS API</span>
+              <button class="viewport-tool" id="earthModeButton" type="button" title="Đưa bản đồ về vị trí Street View">◉</button>
               <button class="viewport-tool" id="openEarthButton" type="button" title="Mở vị trí trong Google Earth">↗</button>
             </div>
           </div>
@@ -111,7 +111,7 @@
               <button class="map-action" id="zoomInButton" type="button" title="Phóng to">＋</button>
               <button class="map-action" id="zoomOutButton" type="button" title="Thu nhỏ">−</button>
               <span class="map-action-separator"></span>
-              <button class="map-action" id="mapTypeButton" type="button" title="Đổi bản đồ đường phố / vệ tinh">▧</button>
+              <button class="map-action" id="mapTypeButton" type="button" title="Đưa bản đồ về vị trí hiện tại">▧</button>
             </div>
             <div class="drag-hint" id="dragHint"><span>+</span> Kéo vòng tròn để đổi điểm 360°</div>
           </div>
@@ -157,7 +157,7 @@
 
   <noscript>Ứng dụng cần JavaScript để tải Google Map, Google Earth và dữ liệu tra cứu.</noscript>
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="./config.js?v=20260919-6"></script>
-  <script type="module" src="./app.js?v=20260919-6"></script>
+  <script src="./config.js?v=20260919-7"></script>
+  <script type="module" src="./app.js?v=20260919-7"></script>
 </body>
 </html>

@@ -47,8 +47,14 @@ async function boot() {
   }
 
   if (mapsResult.status === 'fulfilled') {
-    await initGoogleExperience();
-    setRuntimeStatus('Street View và Earth đang đồng bộ', 'ready');
+    try {
+      await initGoogleExperience();
+      setRuntimeStatus('Street View và bản đồ đang đồng bộ', 'ready');
+    } catch (error) {
+      console.error('Vietflex map initialization failed.', error);
+      setRuntimeStatus('Google Maps đã tải nhưng khởi tạo không thành công', 'error');
+      showMapError(error);
+    }
   } else {
     setRuntimeStatus('Chưa kết nối được Google Maps API', 'error');
     showMapError(mapsResult.reason);
@@ -90,7 +96,19 @@ function loadGoogleMaps(apiKey) {
     const script = document.createElement('script');
     script.async = true;
     script.defer = true;
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=beta&language=vi&region=VN&libraries=places,geometry&callback=${callbackName}`;
+    script.referrerPolicy = 'no-referrer-when-downgrade';
+
+    window.gm_authFailure = () => {
+      const error = new Error('Google Maps API từ chối khóa hoặc HTTP referrer. Hãy kiểm tra Maps JavaScript API, billing và giới hạn domain cho vietflexmap.github.io.');
+      setRuntimeStatus('Google Maps API bị từ chối quyền truy cập', 'error');
+      showMapError(error);
+      finish(reject, error);
+    };
+
+    // Pin the stable API version instead of the mutable beta channel.
+    // 3D is loaded separately with importLibrary('maps3d') and may fall back
+    // without blocking the 2D map or Street View.
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=3.65&language=vi&region=VN&loading=async&callback=${callbackName}`;
     script.onerror = () => finish(reject, new Error('Không thể tải Google Maps JavaScript API.'));
     document.head.appendChild(script);
   });
@@ -240,8 +258,11 @@ async function initGoogleExperience() {
 
   attachGoogleListeners();
   updatePositionUI(center);
-  await initEarth3D(center);
+
+  // Street View is the primary experience: start it immediately.
+  // Earth 3D is progressive enhancement and must never block the viewer.
   requestStreetView(center);
+  void initEarth3D(center);
 }
 
 function attachGoogleListeners() {

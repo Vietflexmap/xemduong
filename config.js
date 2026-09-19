@@ -6,6 +6,6 @@ window.VIETFLEX_CONFIG = Object.freeze({
   googleMapsApiKey: '',
   backendBaseUrl: '',
   adminDataUrl: 'https://vietflexmap.github.io/sapnhap/data/admin.json',
-  defaultCenter: { lat: 10.2415, lng: 106.3750 },
+  defaultCenter: { lat: 10.2411753, lng: 106.374835 },
   defaultZoom: 16
 });

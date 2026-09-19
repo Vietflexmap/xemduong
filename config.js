@@ -10,7 +10,7 @@
  * may override the browser key with GOOGLE_MAPS_BROWSER_KEY.
  */
 window.VIETFLEX_CONFIG = Object.freeze({
-  googleMapsApiKey: 'AIzaSyAuRWIozMKFbaB82wW1NqRvBGcF8_q_fSg',
+  googleMapsApiKey: 'AIzaSyBKCGXg4JwHkRITTlUAb9dHlsyF7jOJCc8',
   backendBaseUrl: '',
   adminDataUrl: 'https://vietflexmap.github.io/sapnhap/data/admin.json',
   defaultCenter: { lat: 10.2415, lng: 106.3750 },

@@ -174,16 +174,16 @@ function parseLocationInput(raw = '') {
   const original = String(raw || '').trim();
   if (!original) return null;
 
-  const urlMatch = original.match(/https?:\\/\\/[^\\s]+/i);
-  const candidate = (urlMatch ? urlMatch[0] : original).replace(/[)>\\]}.,;]+$/, '');
+  const urlMatch = original.match(/https?:\/\/[^\s]+/i);
+  const candidate = (urlMatch ? urlMatch[0] : original).replace(/[)>\]}.,;]+$/, '');
   let decoded = candidate;
   try { decoded = decodeURIComponent(candidate); } catch {}
 
   const patterns = [
-    /(?:[?&](?:query|q|ll|center|viewpoint)=)(-?\\d+(?:\\.\\d+)?)[,\\s]+(-?\\d+(?:\\.\\d+)?)/i,
-    /@(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)/,
-    /!3d(-?\\d+(?:\\.\\d+)?)!4d(-?\\d+(?:\\.\\d+)?)/,
-    /(?:^|[^0-9.-])(-?\\d{1,2}(?:\\.\\d+)?)[,\\s]+(-?\\d{1,3}(?:\\.\\d+)?)(?:$|[^0-9.])/,
+    /(?:[?&](?:query|q|ll|center|viewpoint)=)(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)/i,
+    /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
+    /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,
+    /(?:^|[^0-9.-])(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)(?:$|[^0-9.])/,
   ];
 
   for (const pattern of patterns) {
@@ -230,8 +230,8 @@ async function goToLocationInput(raw) {
 }
 
 async function resolveLocationUrl(url) {
-  const base = String(state.config.backendBaseUrl || '').replace(/\\/$/, '');
-  const onGithubPages = /\\.github\\.io$/i.test(window.location.hostname);
+  const base = String(state.config.backendBaseUrl || '').replace(/\/$/, '');
+  const onGithubPages = /\.github\.io$/i.test(window.location.hostname);
 
   if (onGithubPages && !base) {
     throw new Error('Link rút gọn cần backend resolver; link có tọa độ dùng ngay được.');

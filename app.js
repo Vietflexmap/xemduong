@@ -129,6 +129,20 @@ function bindUI() {
   $('drawerToggle')?.addEventListener('click', () => toggleDrawer());
   $('drawerClose')?.addEventListener('click', () => toggleDrawer(false));
 
+  $('locationLinkForm')?.addEventListener('submit', (event) => {
+    event.preventDefault();
+    goToLocationInput($('locationLinkInput')?.value || '');
+  });
+  $('locationLinkInput')?.addEventListener('paste', () => {
+    window.setTimeout(() => goToLocationInput($('locationLinkInput')?.value || ''), 30);
+  });
+  $('locationLinkClear')?.addEventListener('click', () => {
+    const input = $('locationLinkInput');
+    if (input) input.value = '';
+    setLocationLinkStatus('Dán link để mở ngay vị trí trên Street View + Google Map');
+    input?.focus();
+  });
+
   $('adminSearch')?.addEventListener('input', renderAdminList);
   $('adminSearchClear')?.addEventListener('click', () => {
     $('adminSearch').value = '';
@@ -154,6 +168,95 @@ function bindUI() {
       toggleDrawer(false);
     }
   });
+}
+
+function parseLocationInput(raw = '') {
+  const original = String(raw || '').trim();
+  if (!original) return null;
+
+  const urlMatch = original.match(/https?:\\/\\/[^\\s]+/i);
+  const candidate = (urlMatch ? urlMatch[0] : original).replace(/[)>\\]}.,;]+$/, '');
+  let decoded = candidate;
+  try { decoded = decodeURIComponent(candidate); } catch {}
+
+  const patterns = [
+    /(?:[?&](?:query|q|ll|center|viewpoint)=)(-?\\d+(?:\\.\\d+)?)[,\\s]+(-?\\d+(?:\\.\\d+)?)/i,
+    /@(-?\\d+(?:\\.\\d+)?),(-?\\d+(?:\\.\\d+)?)/,
+    /!3d(-?\\d+(?:\\.\\d+)?)!4d(-?\\d+(?:\\.\\d+)?)/,
+    /(?:^|[^0-9.-])(-?\\d{1,2}(?:\\.\\d+)?)[,\\s]+(-?\\d{1,3}(?:\\.\\d+)?)(?:$|[^0-9.])/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = decoded.match(pattern);
+    if (!match) continue;
+    const lat = Number(match[1]);
+    const lng = Number(match[2]);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      return { type: 'coordinates', lat, lng, source: candidate };
+    }
+  }
+
+  try {
+    const url = new URL(candidate);
+    return { type: 'url', url: url.href, host: url.hostname.toLowerCase() };
+  } catch {
+    return null;
+  }
+}
+
+async function goToLocationInput(raw) {
+  const parsed = parseLocationInput(raw);
+  if (!parsed) {
+    setLocationLinkStatus('Không nhận dạng được link hoặc tọa độ.', 'error');
+    return;
+  }
+
+  if (parsed.type === 'coordinates') {
+    state.zoom = Math.max(17, state.zoom);
+    setPosition({ lat: parsed.lat, lng: parsed.lng }, { syncStreet: true, syncMap: true });
+    setLocationLinkStatus(`Đã mở: ${parsed.lat.toFixed(6)}, ${parsed.lng.toFixed(6)}`, 'ready');
+    return;
+  }
+
+  setLocationLinkStatus('Đang giải mã liên kết vị trí…', 'loading');
+  try {
+    const location = await resolveLocationUrl(parsed.url);
+    state.zoom = Math.max(17, state.zoom);
+    setPosition({ lat: location.lat, lng: location.lng }, { syncStreet: true, syncMap: true });
+    setLocationLinkStatus(`Đã mở: ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`, 'ready');
+  } catch (error) {
+    setLocationLinkStatus(error?.message || 'Không giải được liên kết vị trí.', 'error');
+  }
+}
+
+async function resolveLocationUrl(url) {
+  const base = String(state.config.backendBaseUrl || '').replace(/\\/$/, '');
+  const onGithubPages = /\\.github\\.io$/i.test(window.location.hostname);
+
+  if (onGithubPages && !base) {
+    throw new Error('Link rút gọn cần backend resolver; link có tọa độ dùng ngay được.');
+  }
+
+  const endpoint = `${base}/api/resolve-location?url=${encodeURIComponent(url)}`;
+  const response = await fetch(endpoint, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+  let payload = null;
+  try { payload = await response.json(); } catch {}
+  if (!response.ok) throw new Error(payload?.error || `Resolver HTTP ${response.status}`);
+
+  const lat = numberOrNull(payload?.lat);
+  const lng = numberOrNull(payload?.lng);
+  if (lat == null || lng == null || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+    throw new Error('Không tìm thấy tọa độ trong liên kết này.');
+  }
+  return { lat, lng, source: payload?.source || 'resolver' };
+}
+
+function setLocationLinkStatus(text, kind = '') {
+  const node = $('locationLinkStatus');
+  if (!node) return;
+  node.textContent = text;
+  node.classList.remove('ready', 'error', 'loading');
+  if (kind) node.classList.add(kind);
 }
 
 function buildStreetViewUrl() {

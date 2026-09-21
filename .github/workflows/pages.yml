@@ -2,7 +2,7 @@ name: Deploy Vietflex Street View
 
 on:
   push:
-    branches: [codex/xemduong-360-earth]
+    branches: [main, codex/xemduong-360-earth]
   workflow_dispatch:
 
 permissions:

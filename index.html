@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#071923">
   <meta name="description" content="Vietflex Street View — trải nghiệm 360° đồng bộ với Google Map và Google Earth.">
   <title>Vietflex Street View · Google Map & Earth</title>
-  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./styles.css?v=20260921-link2map-1">
 </head>
 <body>
   <div class="app-shell" id="appShell">
@@ -31,6 +31,20 @@
         </button>
       </div>
     </header>
+
+    <section class="location-link-bar" aria-label="Dán liên kết vị trí">
+      <form class="location-link-form" id="locationLinkForm">
+        <span class="location-link-badge">LINK → MAP</span>
+        <label class="location-link-field" for="locationLinkInput">
+          <span class="location-link-icon" aria-hidden="true">⌁</span>
+          <input id="locationLinkInput" type="text" autocomplete="off" spellcheck="false"
+            placeholder="Dán link Google Maps / Zalo hoặc tọa độ 10.2692717,106.3586235">
+          <button id="locationLinkClear" type="button" title="Xóa link" aria-label="Xóa link">×</button>
+        </label>
+        <button class="location-link-go" id="locationLinkGo" type="submit">ĐI TỚI</button>
+      </form>
+      <div class="location-link-status" id="locationLinkStatus">Dán link để mở ngay vị trí trên Street View + Google Map</div>
+    </section>
 
     <div class="workspace" id="workspace">
       <main class="viewer-shell" aria-label="Trình xem đường phố đồng bộ">
@@ -157,6 +171,6 @@
 
   <noscript>Ứng dụng cần JavaScript để tải Google Map, Google Earth và dữ liệu tra cứu.</noscript>
   <script src="./config.js?v=20260919-9"></script>
-  <script type="module" src="./app.js?v=20260919-9"></script>
+  <script type="module" src="./app.js?v=20260921-link2map-1"></script>
 </body>
 </html>

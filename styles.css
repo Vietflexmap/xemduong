@@ -48,6 +48,23 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .top-action-icon { font-size: 17px; color: var(--cyan); }
 .top-action-label { font-size: 11px; font-weight: 700; letter-spacing: .04em; }
 
+.location-link-bar { flex: 0 0 54px; min-height: 54px; display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, rgba(8,30,39,.98), rgba(9,37,45,.96)); position: relative; z-index: 18; }
+.location-link-form { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.location-link-badge { flex: 0 0 auto; height: 34px; display: inline-flex; align-items: center; padding: 0 10px; border: 1px solid rgba(65,230,208,.28); border-radius: 9px; color: var(--cyan); background: rgba(65,230,208,.08); font-size: 9px; font-weight: 900; letter-spacing: .11em; white-space: nowrap; }
+.location-link-field { min-width: 180px; flex: 1; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; border: 1px solid rgba(164,212,211,.26); border-radius: 9px; background: rgba(255,255,255,.07); transition: .18s ease; }
+.location-link-field:focus-within { border-color: rgba(65,230,208,.72); box-shadow: 0 0 0 3px rgba(65,230,208,.09); }
+.location-link-icon { color: var(--cyan); font-size: 19px; transform: rotate(-18deg); }
+.location-link-field input { min-width: 0; flex: 1; height: 100%; border: 0; outline: 0; color: #f1fbfa; background: transparent; font-size: 11px; }
+.location-link-field input::placeholder { color: #78979a; }
+.location-link-field button { width: 24px; height: 24px; border: 0; border-radius: 6px; color: #8aa6a8; background: transparent; font-size: 18px; line-height: 1; }
+.location-link-field button:hover { color: #fff; background: rgba(255,255,255,.08); }
+.location-link-go { height: 36px; flex: 0 0 auto; padding: 0 14px; border: 1px solid rgba(65,230,208,.55); border-radius: 9px; color: #05241f; background: var(--cyan); font-size: 10px; font-weight: 900; letter-spacing: .08em; transition: .18s ease; }
+.location-link-go:hover { transform: translateY(-1px); filter: brightness(1.04); }
+.location-link-status { max-width: 310px; flex: 0 1 310px; overflow: hidden; color: #8fa9ab; font-size: 9px; white-space: nowrap; text-overflow: ellipsis; }
+.location-link-status.ready { color: var(--cyan); }
+.location-link-status.error { color: var(--red); }
+.location-link-status.loading { color: var(--yellow); }
+
 .workspace { min-height: 0; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 0; transition: grid-template-columns .28s cubic-bezier(.2,.8,.2,1); }
 .workspace.drawer-open { grid-template-columns: minmax(0, 1fr) var(--drawer-width); }
 .viewer-shell { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(0, 1.05fr) 24px minmax(0, .95fr); background: #071a22; }
@@ -171,6 +188,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
   :root { --drawer-width: 320px; }
   .brand { min-width: 210px; }
   .topbar-center { justify-content: flex-start; }
+  .location-link-status { display: none; }
   .coverage-pill { display: none; }
 }
 
@@ -184,7 +202,14 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
   .topbar-center { display: none; }
   .top-action-label { display: none; }
   .top-action { width: 34px; padding: 0; }
-  .workspace { min-height: calc(100dvh - 56px); display: flex; flex-direction: column; transition: none; }
+  .location-link-bar { min-height: 58px; flex-basis: 58px; padding: 8px 9px; gap: 6px; }
+  .location-link-badge { display: none; }
+  .location-link-form { gap: 6px; }
+  .location-link-field { height: 40px; padding-left: 8px; }
+  .location-link-field input { font-size: 10px; }
+  .location-link-go { height: 40px; padding: 0 10px; font-size: 9px; }
+  .location-link-status { display: none; }
+  .workspace { min-height: calc(100dvh - 114px); display: flex; flex-direction: column; transition: none; }
   .viewer-shell { flex: 1 1 auto; min-height: 640px; grid-template-rows: minmax(300px, 1fr) 20px minmax(270px, .9fr); }
   .workspace.drawer-open .viewer-shell { flex: 0 0 63dvh; min-height: 500px; }
   .workspace.drawer-open { display: flex; }

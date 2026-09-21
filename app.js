@@ -133,8 +133,15 @@ function bindUI() {
     event.preventDefault();
     goToLocationInput($('locationLinkInput')?.value || '');
   });
-  $('locationLinkInput')?.addEventListener('paste', () => {
-    window.setTimeout(() => goToLocationInput($('locationLinkInput')?.value || ''), 30);
+  $('locationLinkInput')?.addEventListener('paste', (event) => {
+    const pasted = event.clipboardData?.getData('text') || '';
+    if (!pasted) {
+      window.setTimeout(() => goToLocationInput($('locationLinkInput')?.value || ''), 30);
+      return;
+    }
+    event.preventDefault();
+    $('locationLinkInput').value = pasted.trim();
+    goToLocationInput(pasted);
   });
   $('locationLinkClear')?.addEventListener('click', () => {
     const input = $('locationLinkInput');
@@ -179,14 +186,26 @@ function parseLocationInput(raw = '') {
   let decoded = candidate;
   try { decoded = decodeURIComponent(candidate); } catch {}
 
-  const patterns = [
+  // Google Place URLs may contain several coordinate pairs.
+  // The final !3dLAT!4dLNG pair is normally the actual POI,
+  // while @LAT,LNG is only the current camera/map center.
+  const placePairs = [...decoded.matchAll(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/g)];
+  if (placePairs.length) {
+    const match = placePairs[placePairs.length - 1];
+    const lat = Number(match[1]);
+    const lng = Number(match[2]);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      return { type: 'coordinates', lat, lng, source: candidate, coordinateSource: 'google-place' };
+    }
+  }
+
+  const priorityPatterns = [
     /(?:[?&](?:query|q|ll|center|viewpoint)=)(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)/i,
     /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
-    /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,
-    /(?:^|[^0-9.-])(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)(?:$|[^0-9.])/,
+    /(?:^|[^0-9.-])(-?\d{1,2}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)(?:$|[^0-9.])/
   ];
 
-  for (const pattern of patterns) {
+  for (const pattern of priorityPatterns) {
     const match = decoded.match(pattern);
     if (!match) continue;
     const lat = Number(match[1]);
@@ -267,7 +286,7 @@ function buildStreetViewUrl() {
 function buildGoogleMapUrl() {
   const { lat, lng } = state.position;
   const type = state.mapType === 'satellite' ? 'k' : 'm';
-  return `https://maps.google.com/maps?ll=${lat.toFixed(7)},${lng.toFixed(7)}&z=${state.zoom}&t=${type}&hl=vi&output=embed`;
+  return `https://maps.google.com/maps?q=${lat.toFixed(7)},${lng.toFixed(7)}&z=${state.zoom}&t=${type}&hl=vi&output=embed`;
 }
 
 function renderGooglePair({ street = true, map = true } = {}) {

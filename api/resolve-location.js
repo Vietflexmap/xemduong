@@ -126,10 +126,21 @@ function parseCoordinates(value = '') {
   let text = String(value);
   try { text = decodeURIComponent(text); } catch {}
 
+  // In a Google /maps/place URL the final !3d..!4d pair represents
+  // the place itself; earlier pairs can refer to route/context points.
+  const placePairs = [...text.matchAll(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/g)];
+  if (placePairs.length) {
+    const match = placePairs[placePairs.length - 1];
+    const lat = Number(match[1]);
+    const lng = Number(match[2]);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      return { lat, lng };
+    }
+  }
+
   const patterns = [
     /(?:[?&](?:query|q|ll|center|viewpoint)=)(-?\d+(?:\.\d+)?)[,\s]+(-?\d+(?:\.\d+)?)/i,
     /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/,
-    /!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/,
     /"latitude"\s*:\s*(-?\d+(?:\.\d+)?)\s*,\s*"longitude"\s*:\s*(-?\d+(?:\.\d+)?)/i,
     /"lat"\s*:\s*(-?\d+(?:\.\d+)?)\s*,\s*"lng"\s*:\s*(-?\d+(?:\.\d+)?)/i,
     /\[null,null,(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)\]/
